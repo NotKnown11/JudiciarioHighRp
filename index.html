@@ -261,6 +261,8 @@
     }
     .toast.show{ opacity:1; transform: translateX(-50%) translateY(-2px); }
     .small{ font-size:11px; }
+
+    .req-miss{ border-color: rgba(255,92,119,.75)!important; box-shadow: 0 0 0 3px rgba(255,92,119,.14)!important; }
   </style>
 </head>
 <body>
@@ -473,6 +475,154 @@
   }
 
   function sanitize(v){ return (v ?? "").toString().trim(); }
+
+
+  // ===== Validação de campos obrigatórios (por documento) =====
+  function getRequiredFieldsFor(doc){
+    const req = {
+      certidao_nascimento: [
+        {id:"cn_processo", label:"Processo/Registro"},
+        {id:"cn_emissao_data", label:"Emissão"},
+        {id:"cn_emissor_nome", label:"Nome do emissor"},
+        {id:"cn_emissor_id", label:"ID do emissor"},
+        {id:"cn_crianca_nome", label:"Nome da criança"},
+        {id:"cn_crianca_nasc", label:"Data de nascimento"},
+        {id:"cn_resp1_nome", label:"Responsável 1 (nome)"},
+        {id:"cn_resp1_id", label:"Responsável 1 (ID)"},
+        {id:"cn_endereco", label:"Endereço"},
+        {id:"cn_finalidade", label:"Finalidade"}
+      ],
+      adocao: [
+        {id:"ad_registro", label:"Registro"},
+        {id:"ad_data", label:"Data"},
+        {id:"ad_emissor_nome", label:"Nome do emissor"},
+        {id:"ad_emissor_id", label:"ID do emissor"},
+        {id:"ad_crianca_nome", label:"Nome da criança"},
+        {id:"ad_crianca_id", label:"ID da criança"},
+        {id:"ad_resp1_nome", label:"Responsável (nome)"},
+        {id:"ad_resp1_id", label:"Responsável (ID)"},
+        {id:"ad_endereco", label:"Endereço"}
+      ],
+      casamento: [
+        {id:"cs_registro", label:"Registro"},
+        {id:"cs_data", label:"Data"},
+        {id:"cs_emissor_nome", label:"Nome do emissor"},
+        {id:"cs_emissor_id", label:"ID do emissor"},
+        {id:"cs_noivo1_nome", label:"Noivo(a) 1 (nome)"},
+        {id:"cs_noivo1_id", label:"Noivo(a) 1 (ID)"},
+        {id:"cs_noivo2_nome", label:"Noivo(a) 2 (nome)"},
+        {id:"cs_noivo2_id", label:"Noivo(a) 2 (ID)"},
+        {id:"cs_regime", label:"Regime de bens"}
+      ],
+      porte_armas: [
+        {id:"pa_registro", label:"Registro"},
+        {id:"pa_data", label:"Data"},
+        {id:"pa_nome", label:"Nome"},
+        {id:"pa_id", label:"ID"},
+        {id:"pa_tel", label:"Telefone"},
+        {id:"pa_laudo_link", label:"Link do laudo"},
+        {id:"pa_concorda", label:"Concorda com os termos"}
+      ],
+      cnpj: [
+        {id:"cj_data", label:"Data"},
+        {id:"cj_titulo", label:"Nome da empresa"},
+        {id:"cj_registro_civil", label:"Registro civil"},
+        {id:"cj_atividade", label:"Atividade"},
+        {id:"cj_endereco", label:"Endereço"},
+        {id:"cj_renov_base", label:"Data base (renovação)"},
+        {id:"cj_concorda", label:"Concorda com os termos"}
+      ],
+      troca_nome: [
+        {id:"tn_registro", label:"Registro"},
+        {id:"tn_data", label:"Data"},
+        {id:"tn_emissor_nome", label:"Nome do emissor"},
+        {id:"tn_emissor_id", label:"ID do emissor"},
+        {id:"tn_nome_antigo", label:"Nome antigo"},
+        {id:"tn_nome_atual", label:"Nome atual"},
+        {id:"tn_motivo", label:"Motivo"},
+        {id:"tn_concorda", label:"Concorda com os termos"}
+      ],
+      mandado_busca_apreensao: [
+        {id:"mbe_processo", label:"Processo"},
+        {id:"mbe_nome", label:"Nome do alvo"},
+        {id:"mbe_data_presente", label:"Data"},
+        {id:"mbe_validade_data", label:"Validade"},
+        {id:"mbe_autoridade", label:"Autoridade"},
+        {id:"mbe_decisao", label:"Decisão"}
+      ],
+      intimacao: [
+        {id:"int_processo", label:"Processo"},
+        {id:"int_data", label:"Emissão"},
+        {id:"int_nome", label:"Nome do intimado"},
+        {id:"int_motivo", label:"Motivo"},
+        {id:"int_autoridade", label:"Autoridade"}
+      ],
+      termo_depoimento: [
+        {id:"tdp_processo", label:"Processo"},
+        {id:"tdp_data", label:"Data"},
+        {id:"tdp_nome", label:"Nome do depoente"},
+        {id:"tdp_relato", label:"Relato"},
+        {id:"tdp_autoridade", label:"Autoridade"}
+      ],
+      acao_judicial: [
+        {id:"aj_num_processo", label:"Nº do processo"},
+        {id:"aj_data", label:"Data"},
+        {id:"aj_autor", label:"Autor"},
+        {id:"aj_autor_id", label:"ID do autor"},
+        {id:"aj_juiz", label:"Juiz"},
+        {id:"aj_concorda", label:"Concorda com os termos"}
+      ]
+    };
+
+    // Ajustes condicionais simples (ex.: responsável 2 só se selecionado 2)
+    if(doc === "certidao_nascimento"){
+      const qtd = sanitize($("cn_qtd_responsaveis")?.value) || "2";
+      if(qtd === "2"){
+        req.certidao_nascimento.push(
+          {id:"cn_resp2_nome", label:"Responsável 2 (nome)"},
+          {id:"cn_resp2_id", label:"Responsável 2 (ID)"}
+        );
+      }
+      const temFoto = sanitize($("cn_tem_foto")?.value) || "sim";
+      if(temFoto === "sim"){
+        req.certidao_nascimento.push({id:"cn_foto_link", label:"Link da foto"});
+      }
+    }
+
+    return req[doc] || [];
+  }
+
+  function clearMissingMarks(){
+    const els = formArea.querySelectorAll(".req-miss");
+    els.forEach(el=>el.classList.remove("req-miss"));
+  }
+
+  function validateRequiredFields(){
+    if(!docType.value) return true;
+    clearMissingMarks();
+    const required = getRequiredFieldsFor(docType.value);
+    if(!required.length) return true;
+
+    const missing = [];
+    for(const f of required){
+      const el = $(f.id);
+      if(!el) continue; // caso aquele doc ainda não tenha o campo na UI
+      const val = (el.type === "checkbox") ? (el.checked ? "1" : "") : sanitize(el.value);
+      if(!val){
+        missing.push(f);
+        el.classList.add("req-miss");
+      }
+    }
+
+    if(missing.length){
+      const first = $(missing[0].id);
+      first && first.scrollIntoView({behavior:"smooth", block:"center"});
+      first && first.focus && first.focus();
+      showToast("Preencha: " + missing.slice(0,3).map(m=>m.label).join(", ") + (missing.length>3 ? "…" : ""));
+      return false;
+    }
+    return true;
+  }
 
   // ===== Emissão oficial (número + data/hora + autoridade) =====
   let _lastOfficialNumber = "";
@@ -2871,10 +3021,44 @@ lines.push("");
     showToast("Voltou");
   }
 
-  // events
+  
+  // LIVE_PREVIEW__ (atualiza a saída enquanto você preenche)
+  let _liveT = null;
+  function livePreview(){
+    if(!docType.value) return;
+    // não spamma toast; só atualiza o texto
+    try{
+      output.textContent = buildResumo();
+    }catch(e){
+      // ignore
+    }
+  }
+  formArea.addEventListener("input", (ev)=>{
+    const t = ev.target;
+    if(t && t.classList && t.classList.contains("req-miss")){
+      const val = (t.type === "checkbox") ? (t.checked ? "1" : "") : sanitize(t.value);
+      if(val) t.classList.remove("req-miss");
+    }
+    clearTimeout(_liveT);
+    _liveT = setTimeout(livePreview, 180);
+  }, true);
+
+  formArea.addEventListener("change", (ev)=>{
+    const t = ev.target;
+    if(t && t.classList && t.classList.contains("req-miss")){
+      const val = (t.type === "checkbox") ? (t.checked ? "1" : "") : sanitize(t.value);
+      if(val) t.classList.remove("req-miss");
+    }
+    clearTimeout(_liveT);
+    _liveT = setTimeout(livePreview, 120);
+  }, true);
+
+
+// events
   docType.addEventListener("change", ()=>{
     pushHistory();
     renderForm();
+    clearMissingMarks();
     output.textContent = "(O resumo vai aparecer aqui.)";
     showToast("Documento selecionado");
   });
@@ -2884,6 +3068,7 @@ lines.push("");
       showToast("Selecione um documento");
       return;
     }
+    if(!validateRequiredFields()) return;
     pushHistory();
     autoSetRegistro();
     const resumo = buildResumo();
@@ -2896,6 +3081,7 @@ lines.push("");
       showToast("Selecione um documento");
       return;
     }
+    if(!validateRequiredFields()) return;
     pushHistory();
     autoSetRegistro();
     const resumo = buildResumoDiscord();
